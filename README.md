@@ -158,5 +158,3 @@ Deeper theme customization.
 
 Peace Out 🤘
 Hope this LN Forge helps you cook up some fire stories! If you dig it, give it a star!
-
-(Optional: Add a License section here if you want, like MIT License)
