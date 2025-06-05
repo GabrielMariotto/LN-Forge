@@ -1,0 +1,1653 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LN Forge - Interactive Story Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Special+Elite&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; 
+            color: #d1d5db; 
+        }
+        h1, h2, h3, h4, h5 {
+            font-family: 'Special Elite', cursive;
+        }
+        .nav-link {
+            transition: all 0.3s ease;
+            position: relative;
+            padding-bottom: 4px;
+        }
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background-color: #facc15; 
+            transition: width 0.3s ease;
+        }
+        .nav-link:hover::after, .nav-link.active::after {
+            width: 100%;
+        }
+        .character-btn.active, .chapter-item.active {
+            background-color: #facc15; 
+            color: #111827; 
+            transform: scale(1.05);
+        }
+        .content-section { display: none; }
+        .content-section.active { display: block; }
+
+        #initialBlueprintUploadScreen {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #0f172a; 
+        }
+        .app-container.hidden { display: none; }
+
+        .chart-container { position: relative; width: 100%; max-width: 600px; margin-left: auto; margin-right: auto; height: 300px; max-height: 400px; }
+        @media (min-width: 768px) { .chart-container { height: 350px; } }
+
+        .action-btn, .gemini-btn, .upload-btn, .settings-btn, .modal-btn {
+            background-color: #ca8a04; 
+            color: #ffffff;
+            padding: 10px 20px; 
+            border-radius: 6px;
+            font-family: 'Special Elite', cursive;
+            font-size: 1.1rem; 
+            transition: background-color 0.3s ease;
+            cursor: pointer;
+            border: none;
+        }
+        .action-btn:hover, .gemini-btn:hover, .upload-btn:hover, .settings-btn:hover, .modal-btn:hover {
+            background-color: #facc15; 
+        }
+        .modal-btn-secondary {
+            background-color: #4b5563; /* Gray */
+        }
+        .modal-btn-secondary:hover {
+            background-color: #6b7280;
+        }
+        .modal-btn-danger {
+            background-color: #dc2626; /* Red */
+        }
+        .modal-btn-danger:hover {
+            background-color: #ef4444;
+        }
+
+        .modal { transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out; }
+        .modal.hidden { opacity: 0; visibility: hidden; }
+        .modal.visible { opacity: 1; visibility: visible; }
+
+        #chapterContentDisplay {
+            white-space: pre-wrap;
+            background-color: #1f2937;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #374151;
+            max-height: 70vh;
+            overflow-y: auto;
+            font-family: 'Inter', sans-serif; 
+            line-height: 1.6;
+        }
+        .chapter-item { 
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: default; 
+            padding: 0.75rem 1rem; 
+            border-radius: 0.375rem; 
+            transition: all 0.2s ease-in-out; 
+            position: relative; /* For options menu positioning */
+        }
+        .chapter-item:hover { background-color: #374151; }
+        .chapter-item-title { flex-grow: 1; cursor: pointer; } 
+        .chapter-options-btn {
+            background: none;
+            border: none;
+            color: #9ca3af;
+            font-size: 1.25rem;
+            cursor: pointer;
+            padding: 0.25rem;
+            margin-left: 0.5rem;
+        }
+        .chapter-options-btn:hover { color: #facc15; }
+        .chapter-options-menu {
+            display: none;
+            position: absolute;
+            right: 0; /* Align to the right of the item */
+            top: 100%; /* Position below the button */
+            margin-top: 2px;
+            background-color: #1f2937;
+            border: 1px solid #374151;
+            border-radius: 0.375rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 10;
+            width: 120px;
+        }
+        .chapter-options-menu button {
+            display: block;
+            width: 100%;
+            padding: 0.5rem 1rem;
+            text-align: left;
+            color: #d1d5db;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+        .chapter-options-menu button:hover { background-color: #374151; color: #facc15;}
+
+
+        #blueprintStatus, #apiKeyStatus, #initialBlueprintStatus { font-size: 0.9rem; color: #9ca3af; margin-top: 0.5rem; }
+        .parsed-section { margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid #374151;}
+        .parsed-section h3 { color: #facc15; margin-bottom: 0.75rem;}
+        .parsed-section p, .parsed-section li { color: #d1d5db; margin-bottom: 0.5rem;}
+        .parsed-section ul { list-style-type: disc; margin-left: 1.5rem;}
+        .parsed-section strong { color: #eab308; } 
+    </style>
+</head>
+<body class="antialiased">
+
+    <div id="initialBlueprintUploadScreen">
+        <div class="text-center p-8 bg-gray-800 rounded-xl shadow-2xl border border-gray-700">
+            <h1 class="text-5xl text-yellow-400 mb-6">LN Forge</h1>
+            <p class="text-xl text-gray-300 mb-8">Upload your Light Novel Blueprint (.md) to begin.</p>
+            <input type="file" id="initialBlueprintUpload" accept=".md" class="hidden">
+            <label for="initialBlueprintUpload" class="upload-btn text-2xl px-8 py-4">Select Blueprint File</label>
+            <p id="initialBlueprintStatus" class="text-sm text-gray-500 mt-4"></p>
+        </div>
+    </div>
+
+    <div id="appContainer" class="hidden">
+        <header class="bg-gray-900/80 backdrop-blur-sm sticky top-0 z-50 shadow-lg shadow-yellow-900/10">
+            <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+                <h1 id="appTitle" class="text-2xl md:text-3xl text-white font-bold tracking-wider">LN Forge</h1>
+                <div class="hidden md:flex space-x-6 text-lg">
+                    <a href="#overview" class="nav-link text-gray-300 hover:text-yellow-400">Overview</a>
+                    <a href="#characters" class="nav-link text-gray-300 hover:text-yellow-400">Characters</a>
+                    <a href="#world" class="nav-link text-gray-300 hover:text-yellow-400">World</a>
+                    <a href="#plot" class="nav-link text-gray-300 hover:text-yellow-400">Plot</a>
+                    <a href="#ln-chapters" class="nav-link text-gray-300 hover:text-yellow-400">LN Chapters</a>
+                    <a href="#settings" class="nav-link text-gray-300 hover:text-yellow-400">Settings</a>
+                </div>
+                <div class="md:hidden">
+                    <select id="mobile-nav" class="bg-gray-800 border border-gray-700 text-white rounded-md p-2">
+                        <option value="#overview">Overview</option>
+                        <option value="#characters">Characters</option>
+                        <option value="#world">World</option>
+                        <option value="#plot">Plot</option>
+                        <option value="#ln-chapters">LN Chapters</option>
+                        <option value="#settings">Settings</option>
+                    </select>
+                </div>
+            </nav>
+        </header>
+
+        <main class="container mx-auto p-4 md:p-8">
+            <section id="overview" class="content-section min-h-screen">
+                <div id="overviewContent" class="space-y-8">
+                     <p class="text-center text-gray-500 text-xl">Blueprint overview will appear here once parsed by AI.</p>
+                </div>
+            </section>
+            <section id="characters" class="content-section min-h-screen">
+                <div class="text-center mb-12">
+                    <h2 class="text-4xl md:text-5xl font-bold text-yellow-400 mb-4">Cast of Characters</h2>
+                    <p class="text-lg md:text-xl text-gray-400 max-w-3xl mx-auto">
+                        Character profiles extracted from your blueprint by AI. Select a character to view details or generate an AI whisper.
+                    </p>
+                </div>
+                <div id="characterButtonsContainer" class="flex justify-center flex-wrap gap-2 md:gap-4 mb-8">
+                    <p class="text-gray-500">No characters parsed yet.</p>
+                </div>
+                <div id="character-display" class="bg-gray-900 p-6 md:p-8 rounded-lg border border-gray-700 transition-all duration-500 min-h-[300px]">
+                     <p class="text-gray-500">Select a character to see their details.</p>
+                </div>
+            </section>
+            <section id="world" class="content-section min-h-screen">
+                <div id="worldContent" class="space-y-8">
+                    <p class="text-center text-gray-500 text-xl">Worldbuilding details will appear here once parsed by AI.</p>
+                </div>
+            </section>
+            <section id="plot" class="content-section min-h-screen">
+                 <div id="plotContent" class="space-y-8">
+                    <p class="text-center text-gray-500 text-xl">Plot structure will appear here once parsed by AI.</p>
+                    <div class="bg-gray-800 p-6 rounded-lg border border-gray-700 mt-8">
+                        <h4 class="font-bold text-xl mb-2 text-white">Narrative Pacing (Example)</h4>
+                         <p class="text-gray-400 mb-4">Visualizing potential story intensity across acts.</p>
+                        <div class="chart-container">
+                            <canvas id="pacingChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section id="ln-chapters" class="content-section min-h-screen">
+                <div class="text-center mb-8">
+                    <h2 class="text-4xl md:text-5xl font-bold text-yellow-400 mb-4">Light Novel Chapters</h2>
+                    <p class="text-lg md:text-xl text-gray-400 max-w-3xl mx-auto">
+                        Read existing chapters or generate new ones based on your blueprint. Chapters are saved and can be revisited.
+                    </p>
+                </div>
+                <div class="text-center mb-8">
+                    <button id="generateNewChapterBtn" class="action-btn text-xl">Generate New Chapter ✨</button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div class="md:col-span-1 bg-gray-800 p-6 rounded-lg border border-gray-700">
+                        <h3 class="text-2xl text-yellow-400 mb-4">Chapter List</h3>
+                        <div id="chapterList" class="space-y-2">
+                            <p id="noChaptersMessage" class="text-gray-500">No chapters yet. Generate one!</p>
+                        </div>
+                    </div>
+                    <div class="md:col-span-2 bg-gray-800 p-6 rounded-lg border border-gray-700">
+                        <h3 id="currentChapterTitle" class="text-2xl text-yellow-400 mb-4">Select a Chapter</h3>
+                        <div id="chapterContentDisplay" class="text-gray-300 leading-relaxed">
+                            <p>Chapter content will appear here.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section id="settings" class="content-section min-h-screen">
+                <div class="text-center mb-12">
+                    <h2 class="text-4xl md:text-5xl font-bold text-yellow-400 mb-4">Settings</h2>
+                </div>
+                <div class="max-w-2xl mx-auto bg-gray-800 p-8 rounded-lg border border-gray-700 space-y-8">
+                    <div>
+                        <h3 class="text-2xl text-yellow-500 mb-3">Gemini API Key</h3>
+                        <input type="password" id="apiKeyInput" placeholder="Enter your Gemini API Key (optional)" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none">
+                        <button id="saveApiKeyBtn" class="settings-btn mt-3 w-full">Save API Key</button>
+                        <p id="apiKeyStatus" class="text-sm text-gray-500 mt-2">Using default API access. Enter your own key for dedicated use.</p>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl text-yellow-500 mb-3">Manage Blueprint</h3>
+                        <input type="file" id="newBlueprintUpload" accept=".md" class="hidden">
+                        <label for="newBlueprintUpload" class="upload-btn w-full block text-center">Upload New Blueprint (.md)</label>
+                        <p id="newBlueprintStatus" class="text-sm text-gray-500 mt-2 text-center">Upload a new .md file to change the active story blueprint.</p>
+                    </div>
+                     <div>
+                        <h3 class="text-2xl text-yellow-500 mb-3">Re-Parse Current Blueprint</h3>
+                        <button id="reparseBlueprintBtn" class="settings-btn w-full">Re-Parse with AI</button>
+                        <p class="text-sm text-gray-500 mt-2 text-center">If you've updated your API key, re-parse the current blueprint to update displayed content.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="whisperModal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-[100] hidden">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-xl max-w-md w-full border border-yellow-500">
+            <h4 id="whisperModalTitle" class="text-xl text-yellow-400 mb-3">A Whisper from ...</h4>
+            <div id="whisperLoading" class="text-center text-gray-400 hidden my-4">
+                <p>Listening to the void...</p>
+                <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-yellow-400 mx-auto mt-3"></div>
+            </div>
+            <p id="whisperText" class="text-gray-300 whitespace-pre-wrap min-h-[50px]"></p>
+            <button id="closeWhisperModalBtn" class="mt-6 bg-yellow-500 text-gray-900 px-4 py-2 rounded-md hover:bg-yellow-600 transition-colors w-full font-semibold modal-btn">Close</button>
+        </div>
+    </div>
+
+    <div id="chapterModal" class="modal fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center p-4 z-[100] hidden">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-xl max-w-3xl w-full border border-yellow-500 max-h-[90vh] flex flex-col">
+            <h4 id="chapterModalMainTitle" class="text-2xl text-yellow-400 mb-4 flex-shrink-0">Chapter Tool</h4>
+            
+            <div class="flex-grow overflow-y-auto min-h-[0]"> 
+                <div id="aiGenerationView">
+                    <div id="chapterGenerationLoading" class="text-center text-gray-400 hidden my-4">
+                        <p class="text-lg">The Void is stirring... generating chapter...</p>
+                        <div class="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-yellow-400 mx-auto mt-4"></div>
+                    </div>
+                    <div id="generatedChapterContentWrapper" class="mb-4"> 
+                        <h5 id="generatedChapterTitle" class="text-xl text-yellow-500 mb-2"></h5>
+                        <p id="generatedChapterText" class="text-gray-300 whitespace-pre-wrap"></p>
+                    </div>
+                </div>
+
+                <div id="editChapterView" class="hidden flex flex-col space-y-4 h-full">
+                    <div>
+                        <label for="editChapterTitleInput" class="block text-sm font-medium text-yellow-500 mb-1">Chapter Title:</label>
+                        <input type="text" id="editChapterTitleInput" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-yellow-500 focus:border-yellow-500 outline-none">
+                    </div>
+                    <div class="flex-grow flex flex-col">
+                        <label for="editChapterContentTextarea" class="block text-sm font-medium text-yellow-500 mb-1">Chapter Content:</label>
+                        <textarea id="editChapterContentTextarea" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white flex-grow focus:ring-yellow-500 focus:border-yellow-500 outline-none min-h-[200px]"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div id="chapterModalError" class="text-red-400 my-2 flex-shrink-0 hidden"></div>
+            <div class="mt-auto pt-4 flex space-x-4 flex-shrink-0">
+                <button id="primaryChapterActionBtn" class="action-btn flex-1 modal-btn">Action</button> 
+                <button id="closeChapterModalBtn" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md transition-colors flex-1 font-semibold modal-btn modal-btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="deleteConfirmModal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-[150] hidden">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-xl max-w-md w-full border border-yellow-500">
+            <h4 id="deleteConfirmTitle" class="text-xl text-yellow-400 mb-3">Confirm Deletion</h4>
+            <p id="deleteConfirmMessage" class="text-gray-300 mb-6">Are you sure you want to delete this chapter? This action cannot be undone.</p>
+            <div class="flex justify-end space-x-4">
+                <button id="cancelDeleteBtn" class="modal-btn modal-btn-secondary">Cancel</button>
+                <button id="confirmDeleteBtn" class="modal-btn modal-btn-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc, query, orderBy, Timestamp, writeBatch, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "YOUR_API_KEY", authDomain: "YOUR_AUTH_DOMAIN", projectId: "YOUR_PROJECT_ID" };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        const baseAppId = typeof __app_id !== 'undefined' ? __app_id : 'default-ln-forge';
+        let userId = null;
+        let dbChapters = []; 
+        let rawBlueprintContent = ""; 
+        let parsedBlueprintData = {}; 
+        let userApiKey = localStorage.getItem('userGeminiApiKey') || "";
+
+        const initialBlueprintUploadScreen = document.getElementById('initialBlueprintUploadScreen');
+        const appContainer = document.getElementById('appContainer');
+        const initialBlueprintUploadInput = document.getElementById('initialBlueprintUpload');
+        const initialBlueprintStatusEl = document.getElementById('initialBlueprintStatus');
+        const appTitleEl = document.getElementById('appTitle');
+
+        const overviewContentEl = document.getElementById('overviewContent');
+        const characterButtonsContainerEl = document.getElementById('characterButtonsContainer');
+        const characterDisplayEl = document.getElementById('character-display');
+        const worldContentEl = document.getElementById('worldContent');
+        const plotContentEl = document.getElementById('plotContent');
+        
+        let abilityChart = null;
+        let currentCharacterKey = null; 
+        let pacingChartInstance = null;
+
+        const whisperModal = document.getElementById('whisperModal');
+        const whisperModalTitle = document.getElementById('whisperModalTitle');
+        const whisperLoading = document.getElementById('whisperLoading');
+        const whisperText = document.getElementById('whisperText');
+        const closeWhisperModalBtn = document.getElementById('closeWhisperModalBtn');
+
+        const chapterModal = document.getElementById('chapterModal');
+        const chapterModalMainTitleEl = document.getElementById('chapterModalMainTitle'); 
+        const aiGenerationView = document.getElementById('aiGenerationView');
+        const editChapterView = document.getElementById('editChapterView');
+        const chapterGenerationLoading = document.getElementById('chapterGenerationLoading');
+        const generatedChapterContentWrapper = document.getElementById('generatedChapterContentWrapper');
+        const generatedChapterTitleEl = document.getElementById('generatedChapterTitle');
+        const generatedChapterTextEl = document.getElementById('generatedChapterText');
+        const editChapterTitleInput = document.getElementById('editChapterTitleInput');
+        const editChapterContentTextarea = document.getElementById('editChapterContentTextarea');
+        const chapterModalError = document.getElementById('chapterModalError');
+        const primaryChapterActionBtn = document.getElementById('primaryChapterActionBtn');
+        const closeChapterModalBtn = document.getElementById('closeChapterModalBtn');
+        
+        const deleteConfirmModal = document.getElementById('deleteConfirmModal');
+        const deleteConfirmTitleEl = document.getElementById('deleteConfirmTitle');
+        const deleteConfirmMessageEl = document.getElementById('deleteConfirmMessage');
+        const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        let chapterIdToDelete = null;
+
+
+        const newBlueprintUploadInput = document.getElementById('newBlueprintUpload');
+        const newBlueprintStatusEl = document.getElementById('newBlueprintStatus');
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        const saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
+        const apiKeyStatusEl = document.getElementById('apiKeyStatus');
+        const reparseBlueprintBtn = document.getElementById('reparseBlueprintBtn');
+
+        const generateNewChapterBtn = document.getElementById('generateNewChapterBtn');
+        const chapterListEl = document.getElementById('chapterList');
+        const noChaptersMessageEl = document.getElementById('noChaptersMessage');
+        const chapterContentDisplayEl = document.getElementById('chapterContentDisplay');
+        const currentChapterTitleEl = document.getElementById('currentChapterTitle');
+
+        let tempGeneratedChapter = { title: '', content: '', number: 0 };
+        let currentChapterModalMode = 'generate'; 
+        let chapterIdBeingEdited = null;
+
+
+        function getActiveApiKey() {
+            return userApiKey || ""; 
+        }
+        
+        if (userApiKey) {
+            apiKeyInput.type = 'text'; 
+            apiKeyInput.value = userApiKey; 
+            apiKeyInput.type = 'password'; 
+            apiKeyStatusEl.textContent = "Using your saved API Key.";
+            apiKeyStatusEl.classList.add('text-green-400');
+            apiKeyStatusEl.classList.remove('text-gray-500');
+        }
+
+        initialBlueprintUploadInput.addEventListener('change', (event) => handleBlueprintUpload(event, initialBlueprintStatusEl, true));
+        newBlueprintUploadInput.addEventListener('change', (event) => handleBlueprintUpload(event, newBlueprintStatusEl, false));
+        reparseBlueprintBtn.addEventListener('click', async () => {
+            if (!rawBlueprintContent) {
+                alert("No blueprint loaded to re-parse. Please upload one first via Initial Upload or Manage Blueprint.");
+                return;
+            }
+            const statusEl = newBlueprintStatusEl || initialBlueprintStatusEl; 
+            statusEl.textContent = `Re-processing current blueprint with AI... This may take a moment.`;
+            statusEl.className = 'text-sm text-yellow-400 mt-2 text-center';
+            try {
+                parsedBlueprintData = await getParsedBlueprintFromAI(rawBlueprintContent);
+                 if (!parsedBlueprintData || Object.keys(parsedBlueprintData).length === 0) {
+                    throw new Error("AI parsing returned empty or invalid data during re-parse.");
+                }
+                statusEl.textContent = `Blueprint "${parsedBlueprintData.title || 'Current'}" re-parsed successfully!`;
+                statusEl.className = 'text-sm text-green-400 mt-2 text-center';
+                appTitleEl.textContent = parsedBlueprintData.title || "LN Forge";
+                renderAllDynamicContent();
+                setActiveSection('#overview');
+            } catch (error) {
+                console.error("Error re-parsing blueprint with AI:", error);
+                statusEl.textContent = `Error re-processing blueprint: ${error.message}.`;
+                statusEl.className = 'text-sm text-red-400 mt-2 text-center';
+            }
+        });
+
+
+        async function handleBlueprintUpload(event, statusElement, isInitialUpload) {
+            const file = event.target.files[0];
+            if (file && file.name.endsWith('.md')) {
+                statusElement.textContent = `Reading ${file.name}...`;
+                statusElement.className = 'text-sm text-yellow-400 mt-2 text-center';
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    rawBlueprintContent = e.target.result; 
+                    
+                    const currentActiveKey = getActiveApiKey();
+                    if (!currentActiveKey && typeof __app_id === 'undefined') { 
+                        statusElement.textContent = `Blueprint "${file.name}" loaded. AI parsing requires an API key. Please go to Settings.`;
+                        statusElement.className = 'text-sm text-orange-400 mt-2 text-center';
+                        parsedBlueprintData = { title: file.name.replace('.md',''), characters: [], world:{}, plot:{}}; 
+                        appTitleEl.textContent = parsedBlueprintData.title || "LN Forge";
+                        renderAllDynamicContent(); 
+
+                        if (isInitialUpload) {
+                            initialBlueprintUploadScreen.classList.add('hidden');
+                            appContainer.classList.remove('hidden');
+                            setActiveSection('#overview');
+                        } else {
+                            const confirmClear = confirm("Changing blueprint without AI parsing. Existing chapters might be inconsistent. Clear them?");
+                            if (confirmClear && userId) await clearAllChapters();
+                            await loadChaptersFromFirestore(); 
+                            setActiveSection('#overview');
+                        }
+                        if (userId) await loadChaptersFromFirestore();
+                        return; 
+                    }
+
+                    statusElement.textContent = `Processing blueprint with AI... This may take a moment.`;
+                    try {
+                        parsedBlueprintData = await getParsedBlueprintFromAI(rawBlueprintContent);
+                        if (!parsedBlueprintData || Object.keys(parsedBlueprintData).length === 0) {
+                            throw new Error("AI parsing returned empty or invalid data.");
+                        }
+                        
+                        statusElement.textContent = `Blueprint "${parsedBlueprintData.title || file.name}" loaded and parsed successfully!`;
+                        statusElement.className = 'text-sm text-green-400 mt-2 text-center';
+                        
+                        appTitleEl.textContent = parsedBlueprintData.title || "LN Forge";
+                        renderAllDynamicContent();
+                        
+                        if (isInitialUpload) {
+                            initialBlueprintUploadScreen.classList.add('hidden');
+                            appContainer.classList.remove('hidden');
+                            setActiveSection('#overview'); 
+                        } else {
+                            const confirmClear = confirm("Changing the blueprint might make existing chapters inconsistent. Do you want to clear existing chapters for this new story? (Cancel to keep them)");
+                            if (confirmClear && userId) {
+                                await clearAllChapters();
+                            }
+                            await loadChaptersFromFirestore(); 
+                            setActiveSection('#overview'); 
+                        }
+                        if (userId) await loadChaptersFromFirestore(); 
+                    } catch (error) {
+                        console.error("Error parsing blueprint with AI:", error);
+                        statusElement.textContent = `Error processing blueprint: ${error.message}. Please try again or check blueprint format/API Key.`;
+                        statusElement.className = 'text-sm text-red-400 mt-2 text-center';
+                        parsedBlueprintData = { title: file.name.replace('.md',''), characters: [], world:{}, plot:{}}; 
+                        appTitleEl.textContent = parsedBlueprintData.title || "LN Forge";
+                        renderAllDynamicContent(); 
+                        if (isInitialUpload) {
+                             initialBlueprintUploadScreen.classList.add('hidden');
+                             appContainer.classList.remove('hidden');
+                             setActiveSection('#overview');
+                        }
+                    }
+                };
+                reader.onerror = () => {
+                    statusElement.textContent = 'Error reading blueprint file.';
+                    statusElement.className = 'text-sm text-red-400 mt-2 text-center';
+                }
+                reader.readAsText(file);
+            } else if (file) {
+                statusElement.textContent = 'Invalid file type. Please upload a .md file.';
+                statusElement.className = 'text-sm text-red-400 mt-2 text-center';
+                event.target.value = ''; 
+            }
+        }
+
+        async function getParsedBlueprintFromAI(markdownContent) {
+            const currentApiKey = getActiveApiKey();
+            if (!currentApiKey && typeof __app_id === 'undefined') { 
+                 console.warn("Attempted AI parsing without API key in exported environment.");
+                 throw new Error("API Key required for AI blueprint parsing. Please set it in Settings.");
+            }
+
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${currentApiKey}`;
+            
+            const schema = { // Schema based on blueprint_template.txt
+                type: "OBJECT",
+                properties: {
+                    "title": { "type": "STRING", "description": "The main title of the light novel (e.g., from H1 or inferred)." },
+                    "logline": { "type": "STRING", "description": "Logline (1-2 sentences)." },
+                    "elevatorPitch": { "type": "STRING", "description": "Elevator Pitch (30-second version)." },
+                    "keyThemes": { "type": "ARRAY", "items": { "type": "STRING" }, "description": "List of key themes (e.g., Found family, burden of power)." },
+                    "targetAudience": { "type": "STRING", "description": "Target audience description (e.g., teens, young adults, fans of isekai)." },
+                    "lnTropesToLeanInto": { "type": "ARRAY", "items": { "type": "STRING" }, "description": "LN Tropes to emphasize." },
+                    "lnTropesToSubvertOrAvoid": { "type": "ARRAY", "items": { "type": "STRING" }, "description": "LN Tropes to downplay or avoid." },
+                    "uniqueSellingProposition": { "type": "STRING", "description": "What makes this story unique." },
+                    "protagonist": {
+                        "type": "OBJECT",
+                        "properties": {
+                            "nameAndAliases": { "type": "STRING", "description": "Full Name, Nicknames, Titles." },
+                            "demographics": { "type": "STRING", "description": "Age (start & progression), Gender, Race/Species." },
+                            "physicalDescription": { "type": "STRING", "description": "Appearance, distinguishing features, common attire." },
+                            "personalityProfile": {
+                                "type": "OBJECT",
+                                "properties": {
+                                    "mbtiEnneagram": { "type": "STRING", "description": "e.g., INTP, Type 5 (optional)." },
+                                    "strengths": { "type": "ARRAY", "items": { "type": "STRING" }, "description": "At least 3 strengths." },
+                                    "flawsWeaknesses": { "type": "ARRAY", "items": { "type": "STRING" }, "description": "At least 3 impactful flaws." },
+                                    "quirksHabits": { "type": "ARRAY", "items": { "type": "STRING" }, "description": "Unique habits or quirks." }
+                                }
+                            },
+                            "backstory": { "type": "STRING", "description": "Detailed key events, relationships, traumas that shaped them." },
+                            "internalConflict": { "type": "STRING", "description": "What they are struggling with inside." },
+                            "externalConflict": { "type": "STRING", "description": "Outside forces pushing against them." },
+                            "motivations": {
+                                "type": "OBJECT",
+                                "properties": {
+                                    "surfaceGoal": { "type": "STRING" },
+                                    "deeperNeed": { "type": "STRING" }
+                                }
+                            },
+                            "characterArc": {
+                                 "type": "OBJECT",
+                                 "properties": {
+                                    "start": {"type": "STRING", "description": "Where they begin emotionally/morally."},
+                                    "midpointShift": {"type": "STRING", "description": "Key event changing perspective or forcing growth/regression."},
+                                    "end": {"type": "STRING", "description": "How they are different by the story's conclusion."}
+                                 }
+                            },
+                            "skillsAbilitiesPowers": {
+                                "type": "OBJECT",
+                                "properties": {
+                                    "primarySet": { "type": "STRING" },
+                                    "secondaryOrHidden": { "type": "STRING", "description": "Less obvious or later developed skills." },
+                                    "limitationsOrCosts": { "type": "STRING", "description": "Drawbacks or rules for their powers." }
+                                }
+                            }
+                        }
+                    },
+                    "supportingCast": {
+                        "type": "ARRAY",
+                        "description": "List of key supporting characters.",
+                        "items": {
+                            "type": "OBJECT",
+                            "properties": {
+                                "nameAndRole": { "type": "STRING", "description": "e.g., Elara - Best Friend/Healer." },
+                                "briefDescriptionPersonality": { "type": "STRING" },
+                                "relationshipToMC": { "type": "STRING", "description": "How they interact, how it evolves." },
+                                "theirOwnGoalMotivation": { "type": "STRING", "description": "What they want." },
+                                "theirOwnMiniArc": { "type": "STRING", "description": "How they change or what they learn (if applicable)." }
+                            }
+                        }
+                    },
+                    "antagonist": { 
+                        "type": "OBJECT", 
+                        "description": "Details about the main antagonist or opposing force(s). If multiple, focus on the primary or provide a general overview of forces.",
+                        "properties": {
+                            "nameTitleNature": { "type": "STRING", "description": "e.g., Grand Vizier Thorne, The Void Corruption." },
+                            "motivation": { "type": "STRING", "description": "Why are they the antagonist?" },
+                            "goals": { "type": "STRING", "description": "What do they want to achieve?" },
+                            "methodsPowersResources": { "type": "STRING", "description": "How do they operate? What makes them a threat?" },
+                            "relationshipToMC": { "type": "STRING", "description": "e.g., Former friend, ideological opposite." },
+                            "flawsWeaknesses": { "type": "STRING", "description": "Even villains have them." }
+                        }
+                    },
+                    "worldbuilding": {
+                        "type": "OBJECT",
+                        "properties": {
+                            "worldNameAndConcept": { "type": "STRING", "description": "e.g., Aethelgard - a world where emotions manifest as tangible magic." },
+                            "cosmologyDeities": { "type": "STRING", "description": "Gods, creation myths, afterlife beliefs." },
+                            "magicSystemOrTechnology": {
+                                "type": "OBJECT",
+                                "properties": {
+                                    "sourceOfPower": { "type": "STRING" },
+                                    "rulesAndLimitations": { "type": "STRING", "description": "Who can use it? How learned? Costs/dangers? Common/rare?" },
+                                    "typesOfMagicTech": { "type": "STRING", "description": "Schools of magic, spells, gadgets." }
+                                }
+                            },
+                            "geographyKeyLocations": { "type": "STRING", "description": "Map sketch ideas, continents, kingdoms, cities, dungeons." },
+                            "climateEnvironment": { "type": "STRING", "description": "How it affects life and culture." },
+                            "floraFauna": { "type": "STRING", "description": "Monsters, mythical beasts, special plants." },
+                            "societiesCultures": {
+                                "type": "OBJECT",
+                                 "properties": {
+                                    "racesSpecies": {"type": "STRING", "description": "Humans, elves, custom races - traits, histories, relations."},
+                                    "nationsFactions": {"type": "STRING", "description": "Kingdoms, empires, guilds - goals, leaders, power."},
+                                    "governmentLaws": {"type": "STRING", "description": "Monarchy, republic? How is order kept?"},
+                                    "economyResources": {"type": "STRING", "description": "Currency, key industries, trade routes."},
+                                    "socialHierarchyCustoms": {"type": "STRING", "description": "Class system, traditions, festivals, taboos."}
+                                 }
+                            },
+                            "historyLoreLegends": { 
+                                "type": "OBJECT",
+                                "properties": {
+                                    "majorHistoricalEvents": {"type": "STRING", "description": "Ancient wars, cataclysms that shape the present."},
+                                    "propheciesMyths": {"type": "STRING", "description": "Things that might drive the plot or beliefs."}
+                                }
+                            },
+                            "overallAtmosphereTone": { "type": "STRING", "description": "Grimdark, whimsical, mysterious, high-tech." }
+                        }
+                    },
+                    "plotAndStructure": {
+                        "type": "OBJECT",
+                        "properties": {
+                            "overallStoryArcSummary": { "type": "STRING", "description": "The big picture from beginning to end." },
+                            "act1Setup": { "type": "STRING", "description": "Introduction, Inciting Incident, Point of No Return." },
+                            "act2Confrontation": { "type": "STRING", "description": "Trials, Subplots, Midpoint, Lowest Point." },
+                            "act3Resolution": { "type": "STRING", "description": "Climax, Falling Action, Resolution/Denouement." },
+                            "keyPlotPoints": { "type": "ARRAY", "items": { "type": "STRING" }, "description": "List major events." },
+                            "subplots": { "type": "ARRAY", "items": { "type": "STRING", "description":"List and briefly describe."} },
+                            "stakes": { "type": "STRING", "description": "Personal and wider stakes, how they escalate." },
+                            "foreshadowingAndPayoffs": { "type": "ARRAY", "items": { "type": "STRING" }, "description": "Ideas for subtle hints." }
+                        }
+                    },
+                    "pacingAndTone": {
+                        "type": "OBJECT",
+                        "properties": {
+                            "overallPacing": { "type": "STRING", "description": "e.g., Fast-paced action, slow-burn romance." },
+                            "tonalShifts": { "type": "STRING", "description": "Consistent or shifting tone? How managed?" },
+                            "narrativeStyleVoice": { "type": "STRING", "description": "e.g., First person, Third person limited. Witty, serious?" }
+                        }
+                    },
+                    "seriesPotential": {
+                        "type": "OBJECT",
+                        "properties": {
+                            "overallArcForSeries": { "type": "STRING", "description": "If book 1, what's the bigger story?" },
+                            "futurePlotThreadsArcs": { "type": "ARRAY", "items": { "type": "STRING" }, "description":"Ideas for sequels." },
+                            "characterDevelopmentAcrossVolumes": { "type": "STRING", "description":"How MC and others grow over a series." }
+                        }
+                    },
+                    "chapterArcOutline": { // This one is complex, AI might summarize or list a few top arcs/chapters.
+                        "type": "STRING", "description": "A summary or key points from the Chapter/Arc Outline section. For example, 'Arc 1: Title - Chapter 1 (Event), Chapter 2 (Event). Arc 2: ...'. Keep it concise if the outline is very long."
+                    }
+                },
+                "required": ["title", "logline"] // Made logline required as well for a basic structure
+            };
+
+            const prompt = `Thoroughly parse the following light novel blueprint written in Markdown. Extract its information into a structured JSON object. Adhere strictly to the provided JSON schema.
+If a specific field from the schema is not explicitly present or clearly inferable from a similarly named section in the blueprint, omit that field from the JSON output or use an empty string/array as appropriate according to the schema. Prioritize accuracy to the blueprint's content and the schema's structure.
+For array fields like 'keyThemes', 'strengths', 'flaws', 'quirks', 'keyPlotPoints', if the blueprint lists them using bullet points (* or -), extract each bullet point as a separate string in the array.
+For nested objects like 'personalityProfile' or 'magicSystemOrTechnology', populate their properties based on corresponding sub-sections or labeled data in the blueprint.
+
+Blueprint Content:
+---
+${markdownContent}
+---
+
+JSON Schema to follow:
+${JSON.stringify(schema, null, 2)}
+
+Return ONLY the JSON object. Do not include any other text, explanations, or markdown formatting.`;
+
+            const payload = {
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: schema
+                }
+            };
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error("AI Parsing API Error Response:", errorData);
+                throw new Error(`AI Parsing API Error: ${response.status} ${errorData.error?.message || 'Unknown error'}`);
+            }
+            const result = await response.json();
+            if (result.candidates && result.candidates[0]?.content?.parts?.[0]?.text) {
+                 try {
+                    return JSON.parse(result.candidates[0].content.parts[0].text);
+                 } catch (e) {
+                    console.error("Failed to parse JSON from AI response:", e, result.candidates[0].content.parts[0].text);
+                    throw new Error("AI returned malformed JSON for blueprint parsing.");
+                 }
+            } else {
+                console.error("Unexpected AI response structure for blueprint parsing:", result);
+                throw new Error("AI did not return expected content for blueprint parsing.");
+            }
+        }
+        
+        async function clearAllChapters() {
+            if (!userId || !db) return;
+            const batch = writeBatch(db);
+            const chaptersColRef = collection(db, `artifacts/${baseAppId}/users/${userId}/ln_chapters`);
+            const q = query(chaptersColRef);
+            const snapshot = await getDocs(q);
+            snapshot.docs.forEach(doc => {
+                batch.delete(doc.ref);
+            });
+            await batch.commit();
+            dbChapters = [];
+            console.log("All chapters cleared.");
+        }
+
+        function renderAllDynamicContent() {
+            renderOverview();
+            renderCharacterSection();
+            renderWorldSection();
+            renderPlotSection();
+        }
+
+        function escapeHTML(str) {
+            if (typeof str !== 'string') return str;
+            return str.replace(/[&<>"']/g, function (match) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                }[match];
+            });
+        }
+
+
+        function createSectionHTML(title, content) {
+            const safeTitle = escapeHTML(title);
+            if (content === undefined || content === null || (Array.isArray(content) && content.length === 0 && typeof content !== 'string') || (typeof content === 'string' && content.trim() === '')) {
+                 return `<div class="parsed-section"><h3>${safeTitle}</h3><p class="text-gray-500 italic">Not specified in blueprint.</p></div>`;
+            }
+            let contentHTML = '';
+            if (Array.isArray(content)) {
+                // Specific handling for arrays of strings
+                if (content.every(item => typeof item === 'string')) {
+                     contentHTML = `<ul>${content.map(item => `<li>${escapeHTML(item)}</li>`).join('')}</ul>`;
+                } 
+                // Specific handling for character list display within a section (e.g. if supporting cast is an array under a single heading)
+                else if (title.toLowerCase().includes("cast") && content.every(item => typeof item === 'object' && item.nameAndRole)) {
+                     contentHTML = content.map(char => {
+                        let charHtml = `<div class="mb-4 p-3 bg-gray-700/30 rounded-md"><strong>${escapeHTML(char.nameAndRole)}</strong>`;
+                        if(char.briefDescriptionPersonality) charHtml += `<p class="text-sm">${escapeHTML(char.briefDescriptionPersonality)}</p>`;
+                        // Add more fields as needed from the supportingCast item structure
+                        return charHtml + `</div>`;
+                    }).join('');
+                }
+                // Generic handling for other arrays (could be objects or mixed)
+                else {
+                     contentHTML = `<ul>${content.map(item => `<li>${escapeHTML(typeof item === 'object' ? JSON.stringify(item, null, 2) : String(item))}</li>`).join('')}</ul>`;
+                }
+            } else if (typeof content === 'object' && content !== null) { 
+                 contentHTML = '<ul>';
+                 for (const key in content) {
+                    if (Object.prototype.hasOwnProperty.call(content, key)) {
+                        const subTitle = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()); 
+                        const subContent = content[key];
+                        // Recursive call for nested objects/arrays, ensuring it returns HTML string
+                        let innerHtml = createSectionHTML('', subContent).replace(/<div class="parsed-section"><h3><\/h3>|<\/div>|<h3><\/h3>/g, '').trim();
+                        if (innerHtml.startsWith('<ul>') && innerHtml.endsWith('</ul>')) {
+                            innerHtml = innerHtml.substring(4, innerHtml.length - 5); // Remove outer ul if it's just a list
+                        } else if (innerHtml.startsWith('<p>') && innerHtml.endsWith('</p>')) {
+                             // Keep p tags if it's a simple paragraph
+                        }
+
+                        contentHTML += `<li><strong>${escapeHTML(subTitle)}:</strong> ${innerHtml || '<em class="text-gray-500">Not specified</em>'}</li>`;
+                    }
+                 }
+                 contentHTML += '</ul>';
+            }
+            else {
+                contentHTML = `<p>${String(content).replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`;
+            }
+            return `<div class="parsed-section"><h3>${safeTitle}</h3>${contentHTML}</div>`;
+        }
+        
+        function renderOverview() {
+            overviewContentEl.innerHTML = '';
+            if (!parsedBlueprintData || Object.keys(parsedBlueprintData).length === 0) {
+                overviewContentEl.innerHTML = '<p class="text-center text-gray-500 text-xl">Upload and process a blueprint to see overview.</p>';
+                return;
+            }
+            overviewContentEl.innerHTML += createSectionHTML("Logline", parsedBlueprintData.logline);
+            overviewContentEl.innerHTML += createSectionHTML("Elevator Pitch", parsedBlueprintData.elevatorPitch);
+            overviewContentEl.innerHTML += createSectionHTML("Key Themes", parsedBlueprintData.keyThemes);
+            overviewContentEl.innerHTML += createSectionHTML("Target Audience", parsedBlueprintData.targetAudience);
+            overviewContentEl.innerHTML += createSectionHTML("LN Tropes To Lean Into", parsedBlueprintData.lnTropesToLeanInto);
+            overviewContentEl.innerHTML += createSectionHTML("LN Tropes To Subvert/Avoid", parsedBlueprintData.lnTropesToSubvertOrAvoid);
+            overviewContentEl.innerHTML += createSectionHTML("Unique Selling Proposition", parsedBlueprintData.uniqueSellingProposition);
+            if(overviewContentEl.innerHTML.trim() === '') overviewContentEl.innerHTML = '<p class="text-center text-gray-500 text-xl">No overview details found or parsed from blueprint.</p>';
+        }
+
+        function renderCharacterSection() {
+            characterButtonsContainerEl.innerHTML = '';
+            characterDisplayEl.innerHTML = '<p class="text-gray-500">Select a character to see their details.</p>';
+            
+            const charactersToDisplay = [];
+            // Add protagonist
+            if (parsedBlueprintData.protagonist && (parsedBlueprintData.protagonist.nameAndAliases || parsedBlueprintData.protagonist.name)) {
+                 charactersToDisplay.push({ 
+                    type: 'protagonist', 
+                    name: parsedBlueprintData.protagonist.nameAndAliases ? parsedBlueprintData.protagonist.nameAndAliases.split(/, aka|,|\(/)[0].trim() : parsedBlueprintData.protagonist.name, // Simplified name extraction
+                    data: parsedBlueprintData.protagonist 
+                });
+            }
+            // Add supporting cast
+            if (parsedBlueprintData.supportingCast && parsedBlueprintData.supportingCast.length > 0) {
+                parsedBlueprintData.supportingCast.forEach(sc => {
+                    if (sc.nameAndRole) {
+                        charactersToDisplay.push({ type: 'supporting', name: sc.nameAndRole.split(/–|-|,/)[0].trim(), data: sc });
+                    }
+                });
+            }
+            // Add antagonist
+            if (parsedBlueprintData.antagonist && parsedBlueprintData.antagonist.nameTitleNature) {
+                 charactersToDisplay.push({ type: 'antagonist', name: parsedBlueprintData.antagonist.nameTitleNature.split(/ \(|\(/)[0].trim(), data: parsedBlueprintData.antagonist });
+            }
+
+            if (charactersToDisplay.length === 0) {
+                characterButtonsContainerEl.innerHTML = '<p class="text-gray-500">No characters parsed from blueprint.</p>';
+                return;
+            }
+
+            charactersToDisplay.forEach((charObj) => { 
+                const btn = document.createElement('button');
+                btn.dataset.charName = charObj.name; // Use the extracted, cleaner name for matching
+                btn.dataset.charType = charObj.type; // Store type to fetch correct data object
+                btn.className = 'character-btn text-lg font-semibold px-4 py-2 rounded-md bg-gray-700 hover:bg-yellow-500 hover:text-gray-900 transition-all duration-300 transform hover:scale-105';
+                btn.textContent = charObj.name;
+                btn.addEventListener('click', () => displayCharacterDetails(charObj.name, charObj.data, charObj.type));
+                characterButtonsContainerEl.appendChild(btn);
+            });
+        }
+        
+        function displayCharacterDetails(charName, charFullData, charType) {
+            const data = charFullData; // Use the passed full data object
+
+            if (!data) {
+                characterDisplayEl.innerHTML = '<p class="text-red-400">Error: Character data not found for display.</p>';
+                return;
+            }
+            currentCharacterKey = charName; 
+        
+            let nameToDisplay = data.nameAndAliases || data.nameAndRole || data.nameTitleNature || charName;
+            let aliasToDisplay = "";
+            if (data.nameAndAliases && data.nameAndAliases.includes("aka")) {
+                aliasToDisplay = data.nameAndAliases.substring(data.nameAndAliases.indexOf("aka") + 3).trim();
+            } else if (data.alias) { // from old structure, if AI still provides it
+                aliasToDisplay = data.alias;
+            }
+
+
+            let descriptionToDisplay = data.physicalDescription || data.briefDescriptionPersonality || data.description || "";
+            
+            let profileHTML = '', conflictHTML = '', abilitiesHTML = '', motivationsHTML = '', arcHTML = '', backstoryHTML = '';
+
+            if (data.personalityProfile) {
+                profileHTML += data.personalityProfile.mbtiEnneagram ? `<p class="text-gray-400"><strong>MBTI/Enneagram:</strong> ${escapeHTML(data.personalityProfile.mbtiEnneagram)}</p>` : '';
+                if(data.personalityProfile.strengths) profileHTML += `<p class="text-gray-400"><strong>Strengths:</strong> ${escapeHTML(data.personalityProfile.strengths.join(', '))}</p>`;
+                if(data.personalityProfile.flawsWeaknesses) profileHTML += `<p class="text-gray-400"><strong>Flaws:</strong> ${escapeHTML(data.personalityProfile.flawsWeaknesses.join(', '))}</p>`;
+                if(data.personalityProfile.quirksHabits) profileHTML += `<p class="text-gray-400"><strong>Quirks:</strong> ${escapeHTML(data.personalityProfile.quirksHabits.join(', '))}</p>`;
+            }
+            if (data.internalConflict || data.externalConflict) {
+                conflictHTML += data.internalConflict ? `<p class="text-gray-400"><strong>Internal:</strong> ${escapeHTML(data.internalConflict)}</p>` : '';
+                conflictHTML += data.externalConflict ? `<p class="text-gray-400"><strong>External:</strong> ${escapeHTML(data.externalConflict)}</p>` : '';
+            }
+             if (data.skillsAbilitiesPowers) { // For protagonist
+                 abilitiesHTML = `<h4 class="text-xl text-yellow-500 mt-4 mb-2">Abilities/Powers</h4>`;
+                 abilitiesHTML += data.skillsAbilitiesPowers.primarySet ? `<p class="text-gray-400"><strong>Primary:</strong> ${escapeHTML(data.skillsAbilitiesPowers.primarySet)}</p>` : '';
+                 abilitiesHTML += data.skillsAbilitiesPowers.secondaryOrHidden ? `<p class="text-gray-400"><strong>Secondary/Hidden:</strong> ${escapeHTML(data.skillsAbilitiesPowers.secondaryOrHidden)}</p>` : '';
+                 abilitiesHTML += data.skillsAbilitiesPowers.limitationsOrCosts ? `<p class="text-gray-400"><strong>Limitations/Costs:</strong> ${escapeHTML(data.skillsAbilitiesPowers.limitationsOrCosts)}</p>` : '';
+            } else if (data.methodsPowersResources) { // For antagonist
+                abilitiesHTML = `<h4 class="text-xl text-yellow-500 mt-4 mb-2">Methods/Powers/Resources</h4><p class="text-gray-400">${escapeHTML(data.methodsPowersResources)}</p>`;
+            }
+
+             if (data.motivations) {
+                motivationsHTML += data.motivations.surfaceGoal ? `<p class="text-gray-400"><strong>Surface Goal:</strong> ${escapeHTML(data.motivations.surfaceGoal)}</p>` : '';
+                motivationsHTML += data.motivations.deeperNeed ? `<p class="text-gray-400"><strong>Deeper Need:</strong> ${escapeHTML(data.motivations.deeperNeed)}</p>` : '';
+            } else if (data.motivation) { // For antagonist or supporting
+                 motivationsHTML += `<p class="text-gray-400"><strong>Motivation:</strong> ${escapeHTML(data.motivation)}</p>`;
+            }
+            if (data.theirOwnGoalMotivation && charType === 'supporting') { // For supporting cast specifically
+                motivationsHTML += `<p class="text-gray-400"><strong>Their Goal:</strong> ${escapeHTML(data.theirOwnGoalMotivation)}</p>`;
+            }
+
+
+            if (data.characterArc) {
+                arcHTML += data.characterArc.start ? `<p class="text-gray-400"><strong>Start:</strong> ${escapeHTML(data.characterArc.start)}</p>` : '';
+                arcHTML += data.characterArc.midpointShift ? `<p class="text-gray-400"><strong>Midpoint:</strong> ${escapeHTML(data.characterArc.midpointShift)}</p>` : '';
+                arcHTML += data.characterArc.end ? `<p class="text-gray-400"><strong>End:</strong> ${escapeHTML(data.characterArc.end)}</p>` : '';
+            } else if (data.theirOwnMiniArc && charType === 'supporting') {
+                 arcHTML += `<p class="text-gray-400"><strong>Mini-Arc:</strong> ${escapeHTML(data.theirOwnMiniArc)}</p>`;
+            }
+
+            if(data.backstory) backstoryHTML = `<div class="mb-4"><h4 class="text-lg text-yellow-300 mt-2 mb-1">Backstory</h4><p class="text-sm text-gray-400">${escapeHTML(data.backstory)}</p></div>`;
+            
+            let relationshipToMCHTML = '';
+            if(data.relationshipToMC) relationshipToMCHTML = `<p class="text-sm text-gray-400"><strong>Relationship to MC:</strong> ${escapeHTML(data.relationshipToMC)}</p>`;
+
+
+            let chartHTML = '';
+            if (data.skillsAbilitiesPowers?.primarySet?.toLowerCase().includes("echocraft") && data.name?.toLowerCase().includes("kairu") ) { 
+                const kairuChartData = { labels: ['Power Output', 'Control', 'Sanity Cost', 'Hallucination Risk'], values: [90, 25, 85, 75] };
+                chartHTML = `<div class="mt-6"><div class="chart-container"><canvas id="abilityChart"></canvas></div></div>`;
+                data.tempChartData = kairuChartData; 
+            }
+
+            const geminiButtonHTML = `<div class="mt-6 text-center md:text-left"><button id="generateWhisperBtn" class="gemini-btn">Hear a Whisper ✨</button></div>`;
+
+            characterDisplayEl.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <h3 class="text-3xl text-yellow-400 mb-1">${escapeHTML(nameToDisplay)}</h3>
+                        ${aliasToDisplay ? `<p class="text-lg text-gray-500 mb-4 italic">"${escapeHTML(aliasToDisplay)}"</p>` : ''}
+                        ${descriptionToDisplay ? `<p class="text-gray-300 mb-2">${escapeHTML(descriptionToDisplay).replace(/\n/g, '<br>')}</p>` : ''}
+                        ${data.demographics ? `<p class="text-sm text-gray-400 mb-4"><strong>Demographics:</strong> ${escapeHTML(data.demographics)}</p>` : ''}
+                        ${backstoryHTML}
+                        ${relationshipToMCHTML}
+                        
+                        <div class="space-y-4">
+                            ${profileHTML ? `<div><h4 class="text-xl text-yellow-500 mb-2">Profile</h4>${profileHTML}</div>` : ''}
+                            ${motivationsHTML ? `<div><h4 class="text-xl text-yellow-500 mt-4 mb-2">Motivations/Goals</h4>${motivationsHTML}</div>` : ''}
+                            ${conflictHTML ? `<div><h4 class="text-xl text-yellow-500 mt-4 mb-2">Conflict</h4>${conflictHTML}</div>` : ''}
+                            ${arcHTML ? `<div><h4 class="text-xl text-yellow-500 mt-4 mb-2">Character Arc</h4>${arcHTML}</div>` : ''}
+                        </div>
+                        ${geminiButtonHTML}
+                    </div>
+                    <div>
+                        ${abilitiesHTML}
+                        ${chartHTML}
+                    </div>
+                </div>`;
+            
+            const whisperBtn = document.getElementById('generateWhisperBtn');
+            if(whisperBtn) whisperBtn.addEventListener('click', generateDynamicCharacterWhisper);
+
+            if (data.tempChartData) { 
+                const ctx = document.getElementById('abilityChart').getContext('2d');
+                if (abilityChart) abilityChart.destroy();
+                abilityChart = new Chart(ctx, { type: 'bar', data: { labels: data.tempChartData.labels, datasets: [{ label: 'Stats', data: data.tempChartData.values, backgroundColor: ['rgba(250,204,21,0.4)','rgba(59,130,246,0.4)','rgba(239,68,68,0.4)','rgba(139,92,246,0.4)'], borderColor: ['#facc15','#3b82f6','#ef4444','#8b5cf6'], borderWidth: 1 }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: {display:false}, tooltip: { backgroundColor:'#1f2937', titleFont:{size:14,family:'Special Elite'}, bodyFont:{size:12,family:'Inter'}, callbacks: { label: (c) => `${c.dataset.label}: ${c.raw}` } } }, scales: { x: { beginAtZero:true, max:100, grid:{color:'rgba(255,255,255,0.1)'}, ticks:{color:'#9ca3af',font:{family:'Inter'}} }, y: { grid:{color:'rgba(255,255,255,0.05)'}, ticks:{color:'#d1d5db',font:{family:'Inter'}} } } } });
+            }
+            document.querySelectorAll('#characterButtonsContainer .character-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.charName === charName);
+            });
+        }
+
+        async function generateDynamicCharacterWhisper() {
+             let characterForWhisper = null;
+             if (currentCharacterKey) {
+                if (parsedBlueprintData.protagonist && (parsedBlueprintData.protagonist.nameAndAliases?.startsWith(currentCharacterKey) || parsedBlueprintData.protagonist.name === currentCharacterKey) ) {
+                    characterForWhisper = parsedBlueprintData.protagonist;
+                } else if (parsedBlueprintData.supportingCast) {
+                    characterForWhisper = parsedBlueprintData.supportingCast.find(c => c.nameAndRole?.startsWith(currentCharacterKey));
+                }
+                if (!characterForWhisper && parsedBlueprintData.antagonist && parsedBlueprintData.antagonist.nameTitleNature?.startsWith(currentCharacterKey)) {
+                    characterForWhisper = parsedBlueprintData.antagonist;
+                }
+             }
+
+            if (!characterForWhisper) {
+                console.warn("Could not find character data for whisper for key:", currentCharacterKey);
+                return;
+            }
+            
+            const currentActiveKey = getActiveApiKey();
+            if (!currentActiveKey && typeof __app_id === 'undefined') {
+                whisperText.textContent = "Cannot generate whisper. API Key is required in Settings for this feature when running locally.";
+                return;
+            }
+
+            whisperModalTitle.textContent = `A Whisper from ${characterForWhisper.nameAndAliases || characterForWhisper.nameAndRole || characterForWhisper.nameTitleNature || currentCharacterKey}...`;
+            whisperText.textContent = '';
+            whisperLoading.classList.remove('hidden');
+            whisperModal.classList.remove('hidden');
+            whisperModal.classList.add('visible');
+
+            const charDescForPrompt = characterForWhisper.physicalDescription || characterForWhisper.briefDescriptionPersonality || characterForWhisper.description || 'Not specified.';
+            const charInternalConflictForPrompt = characterForWhisper.internalConflict || 'Not specified.';
+            const charStrengths = characterForWhisper.personalityProfile?.strengths?.join(', ') || 'N/A';
+            const charFlaws = characterForWhisper.personalityProfile?.flawsWeaknesses?.join(', ') || 'N/A';
+
+
+            const prompt = `You are the character "${characterForWhisper.nameAndAliases || characterForWhisper.nameAndRole || characterForWhisper.nameTitleNature || currentCharacterKey}" from a light novel.
+            Your core description: ${charDescForPrompt}
+            Your personality/profile: Strengths: ${charStrengths}, Flaws: ${charFlaws}.
+            Your internal conflict: ${charInternalConflictForPrompt}
+            The overall tone of the story is melancholic, creepy, surreal. Reality feels fragile.
+            Generate a single, short, introspective, and deeply in-character thought (1-3 sentences) that this character might have. No quotation marks. Be subtle and evocative.`;
+            
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${currentActiveKey}`;
+            let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+            const payload = { contents: chatHistory }; 
+            try {
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!response.ok) { const errorData = await response.json(); throw new Error(`API Error: ${response.status} ${errorData.error?.message || 'Unknown error'}`); }
+                const result = await response.json();
+                if (result.candidates && result.candidates[0]?.content?.parts?.[0]?.text) {
+                    whisperText.textContent = result.candidates[0].content.parts[0].text.trim();
+                } else { whisperText.textContent = "The void offers no answer right now..."; }
+            } catch (error) { console.error("Error generating whisper:", error); whisperText.textContent = "A distortion in the echo... please try again later."; } 
+            finally { whisperLoading.classList.add('hidden'); }
+        }
+        
+        closeWhisperModalBtn.addEventListener('click', () => { whisperModal.classList.add('hidden'); whisperModal.classList.remove('visible'); });
+
+        function renderWorldSection() {
+            worldContentEl.innerHTML = '';
+             if (!parsedBlueprintData.worldbuilding || Object.keys(parsedBlueprintData.worldbuilding).length === 0) {
+                worldContentEl.innerHTML = '<p class="text-center text-gray-500 text-xl">No world details parsed from blueprint.</p>';
+                return;
+            }
+            const world = parsedBlueprintData.worldbuilding;
+            worldContentEl.innerHTML += createSectionHTML("World Name & Concept", world.worldNameAndConcept);
+            worldContentEl.innerHTML += createSectionHTML("Cosmology & Deities", world.cosmologyDeities);
+            if(world.magicSystemOrTechnology) {
+                worldContentEl.innerHTML += createSectionHTML("Magic System / Technology", world.magicSystemOrTechnology);
+            }
+            worldContentEl.innerHTML += createSectionHTML("Geography & Key Locations", world.geographyKeyLocations);
+            worldContentEl.innerHTML += createSectionHTML("Climate & Environment", world.climateEnvironment);
+            worldContentEl.innerHTML += createSectionHTML("Flora & Fauna", world.floraFauna);
+            if (world.societiesCultures) {
+                 worldContentEl.innerHTML += createSectionHTML("Societies & Cultures", world.societiesCultures);
+            }
+            if (world.historyLoreLegends) {
+                worldContentEl.innerHTML += createSectionHTML("History, Lore & Legends", world.historyLoreLegends);
+            }
+            worldContentEl.innerHTML += createSectionHTML("Overall Atmosphere/Tone", world.overallAtmosphereTone);
+
+            if(worldContentEl.innerHTML.trim() === '') worldContentEl.innerHTML = '<p class="text-center text-gray-500 text-xl">No world details parsed from blueprint.</p>';
+        }
+
+        function renderPlotSection() {
+            plotContentEl.innerHTML = ''; 
+            if (!parsedBlueprintData.plotAndStructure || Object.keys(parsedBlueprintData.plotAndStructure).length === 0) {
+                 // Also add the chart container part here so it's always present for initialization
+                plotContentEl.innerHTML = `
+                    <p class="text-center text-gray-500 text-xl">No plot details parsed from blueprint.</p>
+                    <div class="bg-gray-800 p-6 rounded-lg border border-gray-700 mt-8">
+                        <h4 class="font-bold text-xl mb-2 text-white">Narrative Pacing (Example)</h4>
+                        <p class="text-gray-400 mb-4">Visualizing potential story intensity across acts.</p>
+                        <div class="chart-container">
+                            <canvas id="pacingChart"></canvas>
+                        </div>
+                    </div>`;
+                if (document.getElementById('plot').classList.contains('active')) {
+                    initializePacingChart(); // Initialize chart even if no plot data
+                }
+                return;
+            }
+            const plot = parsedBlueprintData.plotAndStructure;
+            let html = '';
+            html += createSectionHTML("Overall Story Arc Summary", plot.overallStoryArcSummary);
+            html += createSectionHTML("Act I: Setup", plot.act1Setup);
+            html += createSectionHTML("Act II: Confrontation", plot.act2Confrontation);
+            html += createSectionHTML("Act III: Resolution", plot.act3Resolution);
+            html += createSectionHTML("Key Plot Points", plot.keyPlotPoints);
+            html += createSectionHTML("Subplots", plot.subplots);
+            html += createSectionHTML("Stakes", plot.stakes); // This is string in new schema
+            html += createSectionHTML("Foreshadowing & Payoffs", plot.foreshadowingAndPayoffs);
+            
+            html += `
+                <div class="bg-gray-800 p-6 rounded-lg border border-gray-700 mt-8">
+                    <h4 class="font-bold text-xl mb-2 text-white">Narrative Pacing (Example)</h4>
+                    <p class="text-gray-400 mb-4">Visualizing potential story intensity across acts.</p>
+                    <div class="chart-container">
+                        <canvas id="pacingChart"></canvas>
+                    </div>
+                </div>
+            `;
+            plotContentEl.innerHTML = html;
+            
+            if (document.getElementById('plot').classList.contains('active')) {
+                initializePacingChart();
+            }
+        }
+
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userId = user.uid;
+                console.log("User signed in:", userId);
+                if (!appContainer.classList.contains('hidden')) {
+                    await loadChaptersFromFirestore();
+                }
+            } else {
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch (error) {
+                    console.error("Error signing in: ", error);
+                    userId = `anonymous-${crypto.randomUUID()}`; 
+                     if (!appContainer.classList.contains('hidden')) {
+                        await loadChaptersFromFirestore();
+                    }
+                }
+            }
+        });
+
+        const navLinks = document.querySelectorAll('.nav-link');
+        const mobileNav = document.getElementById('mobile-nav');
+        const sections = document.querySelectorAll('.content-section');
+        
+        function initializePacingChart() {
+            const pacingCanvas = document.getElementById('pacingChart');
+            if (pacingChartInstance) { 
+                pacingChartInstance.destroy();
+                pacingChartInstance = null;
+            }
+            if (pacingCanvas) { 
+                const pacingCtx = pacingCanvas.getContext('2d');
+                if (pacingCtx) {
+                    pacingChartInstance = new Chart(pacingCtx, { 
+                        type: 'line', 
+                        data: { 
+                            labels: ['Act I (Setup)', 'Act II (Confrontation)', 'Act III (Resolution)'], 
+                            datasets: [{ 
+                                label: 'Narrative Intensity', 
+                                data: [20,80,65], 
+                                fill: true, 
+                                backgroundColor: 'rgba(250,204,21,0.2)', 
+                                borderColor: '#facc15', 
+                                tension: 0.4, 
+                                pointBackgroundColor: '#facc15', 
+                                pointBorderColor: '#fff', 
+                                pointHoverBackgroundColor: '#fff', 
+                                pointHoverBorderColor: '#facc15' 
+                            }] 
+                        }, 
+                        options: { 
+                            responsive: true, 
+                            maintainAspectRatio: false, 
+                            plugins: { 
+                                legend: {display:false}, 
+                                tooltip: { backgroundColor:'#1f2937', titleFont:{size:14,family:'Special Elite'}, bodyFont:{size:12,family:'Inter'} } 
+                            }, 
+                            scales: { 
+                                y: {beginAtZero:true,max:100,grid:{color:'rgba(255,255,255,0.1)'},ticks:{color:'#9ca3af',font:{family:'Inter'}}}, 
+                                x: {grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#d1d5db',font:{family:'Inter'}}} 
+                            } 
+                        } 
+                    });
+                } 
+            }
+        }
+
+
+        function setActiveSection(hash) {
+            const targetHash = hash || '#overview'; 
+            if (appContainer.classList.contains('hidden') && targetHash !== '') return; 
+
+            let sectionActivated = false;
+            sections.forEach(section => {
+                const isActive = section.id === targetHash.substring(1);
+                section.classList.toggle('active', isActive);
+                if (isActive) sectionActivated = true;
+            });
+
+            if (!sectionActivated && sections.length > 0) {
+                sections[0].classList.add('active'); 
+                 history.pushState(null, null, `#${sections[0].id}`);
+                 navLinks.forEach(link => link.classList.toggle('active', link.getAttribute('href') === `#${sections[0].id}`));
+                 if (mobileNav.value !== `#${sections[0].id}`) mobileNav.value = `#${sections[0].id}`;
+                 if (sections[0].id === 'plot') initializePacingChart(); // Init chart if overview is plot
+            } else {
+                navLinks.forEach(link => link.classList.toggle('active', link.getAttribute('href') === targetHash));
+                if (mobileNav.value !== targetHash) mobileNav.value = targetHash;
+            }
+            
+            if (targetHash === '#plot' || (plotContentEl.closest('.content-section.active') && document.getElementById('pacingChart'))) {
+                initializePacingChart(); 
+            }
+            
+            if (targetHash === '#characters' && (parsedBlueprintData.protagonist || (parsedBlueprintData.characters && parsedBlueprintData.characters.length > 0) ) ) {
+                let firstCharName = parsedBlueprintData.protagonist?.nameAndAliases?.split(/, aka|,|\(/)[0].trim() || parsedBlueprintData.characters?.[0]?.name;
+                 const firstCharBtn = characterButtonsContainerEl.querySelector('.character-btn');
+                 if (firstCharBtn && !characterDisplayEl.querySelector('h3') && firstCharName) { 
+                    const charDataForDisplay = parsedBlueprintData.protagonist || parsedBlueprintData.characters.find(c => c.name === firstCharName);
+                    displayCharacterDetails(firstCharName, charDataForDisplay);
+                 }
+            }
+            if (targetHash === '#ln-chapters' && userId) loadChaptersFromFirestore(); 
+        }
+
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => { e.preventDefault(); const targetHash = e.currentTarget.getAttribute('href'); setActiveSection(targetHash); history.pushState(null, null, targetHash); });
+        });
+        mobileNav.addEventListener('change', (e) => { const targetHash = e.target.value; setActiveSection(targetHash); history.pushState(null, null, targetHash); });
+        
+        async function loadChaptersFromFirestore() {
+            if (!userId || !db) {
+                console.log("User or DB not ready for loading chapters.");
+                chapterListEl.innerHTML = '<p class="text-gray-500">Connecting to database...</p>';
+                return;
+            }
+            try {
+                const chaptersColRef = collection(db, `artifacts/${baseAppId}/users/${userId}/ln_chapters`);
+                const q = query(chaptersColRef, orderBy("chapterNumber"));
+                const querySnapshot = await getDocs(q);
+                dbChapters = []; 
+                querySnapshot.forEach((doc) => {
+                    dbChapters.push({ id: doc.id, ...doc.data() }); 
+                });
+                renderChapterList();
+                if (dbChapters.length > 0) { 
+                    loadChapterContent(dbChapters[0].id);
+                } else {
+                    currentChapterTitleEl.textContent = "No Chapters Yet";
+                    chapterContentDisplayEl.textContent = "Generate your first chapter to get started!";
+                }
+            } catch (error) {
+                console.error("Error loading chapters: ", error);
+                chapterListEl.innerHTML = '<p class="text-red-400">Error loading chapters. Check console.</p>';
+            }
+        }
+
+        function renderChapterList() {
+            chapterListEl.innerHTML = ''; 
+            if (dbChapters.length === 0) {
+                noChaptersMessageEl.classList.remove('hidden');
+                currentChapterTitleEl.textContent = "No Chapters Yet";
+                chapterContentDisplayEl.textContent = "Generate your first chapter to get started!";
+                return;
+            }
+            noChaptersMessageEl.classList.add('hidden');
+            dbChapters.forEach(chapter => {
+                const chapterItemContainer = document.createElement('div');
+                chapterItemContainer.className = 'chapter-item text-gray-300 hover:text-yellow-400'; 
+                
+                const titleSpan = document.createElement('span');
+                titleSpan.className = 'chapter-item-title';
+                titleSpan.textContent = `Chapter ${chapter.chapterNumber}: ${chapter.title}`;
+                titleSpan.addEventListener('click', () => loadChapterContent(chapter.id));
+                chapterItemContainer.appendChild(titleSpan);
+
+                const optionsBtn = document.createElement('button');
+                optionsBtn.className = 'chapter-options-btn';
+                optionsBtn.innerHTML = '&#8942;'; 
+                optionsBtn.setAttribute('aria-label', `Options for Chapter ${chapter.chapterNumber}`);
+                optionsBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); 
+                    toggleChapterOptionsMenu(optionsBtn.nextElementSibling, chapterItemContainer); // Pass optionsBtn's direct sibling (menu)
+                });
+                chapterItemContainer.appendChild(optionsBtn);
+
+                const menu = document.createElement('div');
+                menu.className = 'chapter-options-menu';
+                
+                const editBtn = document.createElement('button');
+                editBtn.textContent = 'Edit';
+                editBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openEditChapterModal(chapter.id);
+                    menu.style.display = 'none';
+                });
+                menu.appendChild(editBtn);
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    promptDeleteChapter(chapter.id, `Chapter ${chapter.chapterNumber}: ${chapter.title}`);
+                    menu.style.display = 'none';
+                });
+                menu.appendChild(deleteBtn);
+                
+                chapterItemContainer.appendChild(menu); // Menu is sibling of button
+                chapterListEl.appendChild(chapterItemContainer);
+            });
+        }
+
+        function toggleChapterOptionsMenu(menuElement, itemContainer) {
+            if (!menuElement) return;
+            document.querySelectorAll('.chapter-options-menu').forEach(menu => {
+                if (menu !== menuElement) {
+                    menu.style.display = 'none';
+                }
+            });
+            menuElement.style.display = menuElement.style.display === 'block' ? 'none' : 'block';
+            if (menuElement.style.display === 'block') {
+                // Basic positioning adjustments
+                const itemRect = itemContainer.getBoundingClientRect();
+                menuElement.style.top = `${itemRect.height}px`; // Position below the item
+                menuElement.style.right = `0px`; 
+                menuElement.style.left = 'auto';
+            }
+        }
+
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('.chapter-item')) {
+                document.querySelectorAll('.chapter-options-menu').forEach(menu => {
+                    menu.style.display = 'none';
+                });
+            }
+        });
+
+        function promptDeleteChapter(id, title) {
+            chapterIdToDelete = id;
+            deleteConfirmTitleEl.textContent = `Confirm Deletion`;
+            deleteConfirmMessageEl.textContent = `Are you sure you want to delete "${title}"? This action cannot be undone.`;
+            deleteConfirmModal.classList.remove('hidden');
+            deleteConfirmModal.classList.add('visible');
+        }
+
+        cancelDeleteBtn.addEventListener('click', () => {
+            deleteConfirmModal.classList.add('hidden');
+            deleteConfirmModal.classList.remove('visible');
+            chapterIdToDelete = null;
+        });
+
+        confirmDeleteBtn.addEventListener('click', async () => {
+            if (!userId || !chapterIdToDelete) return;
+            confirmDeleteBtn.disabled = true;
+            confirmDeleteBtn.textContent = "Deleting...";
+            try {
+                const chapterDocRef = doc(db, `artifacts/${baseAppId}/users/${userId}/ln_chapters`, chapterIdToDelete);
+                await deleteDoc(chapterDocRef);
+                
+                // Find the title of the chapter that was just deleted for the check below
+                const deletedChapterTitleCheck = dbChapters.find(c => c.id === chapterIdToDelete)?.title || "the chapter";
+
+                await loadChaptersFromFirestore(); 
+                
+                if (currentChapterTitleEl.textContent.includes(deletedChapterTitleCheck)) {
+                     currentChapterTitleEl.textContent = "Select a Chapter";
+                     chapterContentDisplayEl.textContent = "Chapter content will appear here. The previously viewed chapter was deleted.";
+                     if (dbChapters.length > 0) { // If other chapters exist, load the first one
+                        loadChapterContent(dbChapters[0].id)
+                     }
+                }
+
+            } catch (error) {
+                console.error("Error deleting chapter:", error);
+                alert(`Error deleting chapter: ${error.message}`);
+            } finally {
+                deleteConfirmModal.classList.add('hidden');
+                deleteConfirmModal.classList.remove('visible');
+                confirmDeleteBtn.disabled = false;
+                confirmDeleteBtn.textContent = "Delete";
+                chapterIdToDelete = null;
+            }
+        });
+
+
+        async function openEditChapterModal(chapterId) {
+            const chapter = dbChapters.find(c => c.id === chapterId);
+            if (!chapter) {
+                alert("Error: Chapter not found for editing.");
+                return;
+            }
+            currentChapterModalMode = 'edit';
+            chapterIdBeingEdited = chapterId;
+
+            chapterModalMainTitleEl.textContent = `Edit Chapter ${chapter.chapterNumber}: ${chapter.title}`;
+            aiGenerationView.classList.add('hidden');
+            editChapterView.classList.remove('hidden');
+            chapterGenerationLoading.classList.add('hidden');
+            generatedChapterContentWrapper.classList.add('hidden'); 
+
+            editChapterTitleInput.value = chapter.title;
+            editChapterContentTextarea.value = chapter.content;
+            
+            primaryChapterActionBtn.textContent = 'Save Changes';
+            primaryChapterActionBtn.disabled = false;
+            
+            chapterModalError.classList.add('hidden');
+            chapterModal.classList.remove('hidden');
+            chapterModal.classList.add('visible');
+        }
+
+        async function saveEditedChapter() {
+            if (!userId || !chapterIdBeingEdited) return;
+            
+            const newTitle = editChapterTitleInput.value.trim();
+            const newContent = editChapterContentTextarea.value.trim();
+
+            if (!newTitle || !newContent) {
+                chapterModalError.textContent = "Title and content cannot be empty.";
+                chapterModalError.classList.remove('hidden');
+                return;
+            }
+            primaryChapterActionBtn.disabled = true;
+            primaryChapterActionBtn.textContent = 'Saving...';
+
+            try {
+                const chapterDocRef = doc(db, `artifacts/${baseAppId}/users/${userId}/ln_chapters`, chapterIdBeingEdited);
+                await updateDoc(chapterDocRef, {
+                    title: newTitle,
+                    content: newContent,
+                    updatedAt: Timestamp.now() 
+                });
+                await loadChaptersFromFirestore(); 
+                // Check if the edited chapter is the one currently displayed
+                if (currentChapterTitleEl.textContent.includes(dbChapters.find(c=>c.id === chapterIdBeingEdited)?.title) || chapterIdBeingEdited === dbChapters.find(c => c.title === editChapterTitleInput.value)?.id) {
+                     loadChapterContent(chapterIdBeingEdited); // Reload its content in display
+                }
+                closeChapterModalBtn.click(); 
+            } catch (error) {
+                console.error("Error updating chapter:", error);
+                chapterModalError.textContent = `Error updating chapter: ${error.message}`;
+                chapterModalError.classList.remove('hidden');
+            } finally {
+                 primaryChapterActionBtn.disabled = false;
+            }
+        }
+
+
+        async function loadChapterContent(chapterId) {
+            const chapter = dbChapters.find(c => c.id === chapterId);
+            if (chapter) {
+                currentChapterTitleEl.textContent = `Chapter ${chapter.chapterNumber}: ${chapter.title}`;
+                chapterContentDisplayEl.textContent = chapter.content;
+                document.querySelectorAll('#chapterList .chapter-item').forEach(itemEl => { 
+                    itemEl.classList.toggle('active', itemEl.querySelector('.chapter-item-title').textContent.includes(`Chapter ${chapter.chapterNumber}: ${chapter.title}`));
+                });
+            } else {
+                currentChapterTitleEl.textContent = "Chapter Not Found";
+                chapterContentDisplayEl.textContent = "Could not find the selected chapter content in the local cache.";
+            }
+        }
+        
+        generateNewChapterBtn.addEventListener('click', async () => {
+            currentChapterModalMode = 'generate';
+            chapterIdBeingEdited = null;
+
+            chapterModalMainTitleEl.textContent = 'New Chapter Generation';
+            aiGenerationView.classList.remove('hidden');
+            editChapterView.classList.add('hidden');
+            generatedChapterContentWrapper.classList.add('hidden'); 
+            chapterGenerationLoading.classList.remove('hidden'); 
+            primaryChapterActionBtn.textContent = 'Save Chapter';
+            primaryChapterActionBtn.disabled = true; 
+
+            if (!userId) {
+                alert("User not signed in. Cannot generate chapter."); return;
+            }
+            if (!rawBlueprintContent) { 
+                alert("Please upload a blueprint before generating chapters."); return;
+            }
+            const currentActiveKey = getActiveApiKey();
+             if (!currentActiveKey && typeof __app_id === 'undefined') {
+                alert("Cannot generate chapter. API Key is required in Settings for this feature when running locally.");
+                return;
+            }
+
+            chapterModal.classList.remove('hidden');
+            chapterModal.classList.add('visible');
+            chapterModalError.classList.add('hidden');
+            chapterModalError.textContent = '';
+            generatedChapterTitleEl.textContent = '';
+            generatedChapterTextEl.textContent = '';
+
+            const nextChapterNumber = dbChapters.length + 1;
+            tempGeneratedChapter.number = nextChapterNumber;
+
+            let previousChaptersFullText = "No previous chapters.";
+            if (dbChapters.length > 0) {
+                previousChaptersFullText = "Full text of previous chapters (AI, please prioritize recent events and overarching plot points if context becomes too long to fully process. Focus on maintaining character voice and plot progression based on the most recent developments):\n\n";
+                const sortedPrevChapters = [...dbChapters].sort((a, b) => a.chapterNumber - b.chapterNumber);
+                sortedPrevChapters.forEach(ch => {
+                    previousChaptersFullText += `--- START OF CHAPTER ${ch.chapterNumber}: ${ch.title} ---\n`;
+                    previousChaptersFullText += ch.content; 
+                    previousChaptersFullText += `\n--- END OF CHAPTER ${ch.chapterNumber} ---\n\n`;
+                });
+            }
+            
+            const prompt = `
+You are a creative AI assistant helping to write a Light Novel.
+The PRIMARY story guide is the following Blueprint Content (raw Markdown):
+--- BEGIN BLUEPRINT ---
+${rawBlueprintContent} 
+--- END BLUEPRINT ---
+
+Full Text of Previous Chapters (if any):
+${previousChaptersFullText}
+
+Based on the PRIMARY Blueprint Content provided above, and then considering the FULL TEXT of previous chapters for continuity, please generate the content for Chapter ${nextChapterNumber}.
+The chapter should be titled "Chapter ${nextChapterNumber}: [AI, please create a fitting title based on the blueprint's arc outline and context. For example, if the blueprint suggests Chapter ${nextChapterNumber} involves a specific event like 'First blackout + strange dream', title it accordingly.]".
+The chapter should be extremely detailed and aim for a very substantial length, around 3000-3500 words. Be as descriptive and thorough as possible in exploring the plot point for this chapter.
+Maintain the tone, style (e.g., 1st person POV of the main character if specified in blueprint), and specific character voices as detailed in the blueprint.
+Focus on the next logical plot point indicated by the blueprint's arc outline or the natural progression from previous chapters.
+If the blueprint mentions specific character perceptions (like Kairu smelling rain) or internal monologues/god's whispers, ensure these elements are present and consistent.
+Output the chapter as plain text. The very first line MUST be the chapter title, formatted exactly as: "Chapter X: Your Chosen Title". Do NOT add any other text before this title line. The rest of the output should be the chapter content itself.
+Do not include any introductory or concluding remarks like "Here is the chapter:" or "I hope you like it." Just the title line and then the chapter body.
+`;
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${currentActiveKey}`;
+            let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+            const payload = { contents: chatHistory }; 
+
+            try {
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!response.ok) { const errorData = await response.json(); throw new Error(`API Error: ${response.status} ${errorData.error?.message || 'Unknown error'}`); }
+                const result = await response.json();
+                if (result.candidates && result.candidates[0]?.content?.parts?.[0]?.text) {
+                    const rawText = result.candidates[0].content.parts[0].text;
+                    const firstNewLineIndex = rawText.indexOf('\n');
+                    let displayChapterTitle = `Chapter ${nextChapterNumber}: Untitled`;
+
+                    if (firstNewLineIndex !== -1) {
+                        displayChapterTitle = rawText.substring(0, firstNewLineIndex).trim();
+                        if (/^Chapter \d+: .+/i.test(displayChapterTitle)) {
+                            tempGeneratedChapter.title = displayChapterTitle.replace(/^Chapter \d+: /i, '').trim();
+                            tempGeneratedChapter.content = rawText.substring(firstNewLineIndex + 1).trim();
+                        } else { 
+                            tempGeneratedChapter.title = `Untitled Chapter ${nextChapterNumber}`;
+                            tempGeneratedChapter.content = rawText.trim();
+                            displayChapterTitle = `Chapter ${nextChapterNumber}: ${tempGeneratedChapter.title}`; 
+                        }
+                    } else { 
+                        tempGeneratedChapter.title = `Untitled Chapter ${nextChapterNumber}`;
+                        tempGeneratedChapter.content = rawText.trim();
+                        displayChapterTitle = `Chapter ${nextChapterNumber}: ${tempGeneratedChapter.title}`;
+                    }
+                    
+                    generatedChapterTitleEl.textContent = displayChapterTitle; 
+                    generatedChapterTextEl.textContent = tempGeneratedChapter.content;
+                    primaryChapterActionBtn.disabled = false;
+                } else { 
+                    throw new Error("No content returned from API.");
+                }
+            } catch (error) {
+                console.error("Error generating chapter:", error);
+                chapterModalError.textContent = `Error generating chapter: ${error.message}. Check console & API limits. Please try again.`;
+                chapterModalError.classList.remove('hidden');
+            } finally {
+                chapterGenerationLoading.classList.add('hidden');
+                generatedChapterContentWrapper.classList.remove('hidden');
+            }
+        });
+
+        primaryChapterActionBtn.addEventListener('click', async () => {
+            if (currentChapterModalMode === 'generate') {
+                if (!userId || !tempGeneratedChapter.content) {
+                    chapterModalError.textContent = 'Cannot save: User not signed in or no content from AI.';
+                    chapterModalError.classList.remove('hidden');
+                    return;
+                }
+                primaryChapterActionBtn.disabled = true;
+                primaryChapterActionBtn.textContent = 'Saving...';
+                try {
+                    const chaptersColRef = collection(db, `artifacts/${baseAppId}/users/${userId}/ln_chapters`);
+                    await addDoc(chaptersColRef, {
+                        chapterNumber: tempGeneratedChapter.number,
+                        title: tempGeneratedChapter.title,
+                        content: tempGeneratedChapter.content,
+                        createdAt: Timestamp.now()
+                    });
+                    tempGeneratedChapter = { title: '', content: '', number: 0 }; 
+                    await loadChaptersFromFirestore(); 
+                    closeChapterModalBtn.click(); 
+                } catch (error) {
+                    console.error("Error saving new chapter: ", error);
+                    chapterModalError.textContent = `Error saving chapter: ${error.message}. Please try again.`;
+                    chapterModalError.classList.remove('hidden');
+                     primaryChapterActionBtn.disabled = false;
+                     primaryChapterActionBtn.textContent = 'Save Chapter';
+                }
+            } else if (currentChapterModalMode === 'edit') {
+                await saveEditedChapter();
+            }
+        });
+        
+        closeChapterModalBtn.addEventListener('click', () => {
+            chapterModal.classList.add('hidden');
+            chapterModal.classList.remove('visible');
+            generatedChapterTitleEl.textContent = '';
+            generatedChapterTextEl.textContent = '';
+            editChapterTitleInput.value = '';
+            editChapterContentTextarea.value = '';
+            chapterModalError.classList.add('hidden');
+            tempGeneratedChapter = { title: '', content: '', number: 0 }; 
+            chapterIdBeingEdited = null;
+        });
+
+        saveApiKeyBtn.addEventListener('click', () => {
+            const newKey = apiKeyInput.value.trim();
+            userApiKey = newKey;
+            localStorage.setItem('userGeminiApiKey', newKey);
+            if (newKey) {
+                apiKeyStatusEl.textContent = "API Key saved! Will be used for future generations.";
+                apiKeyStatusEl.className = 'text-sm text-green-400 mt-2';
+            } else {
+                apiKeyStatusEl.textContent = "API Key cleared. Using default API access.";
+                apiKeyStatusEl.className = 'text-sm text-gray-500 mt-2';
+            }
+        });
+    </script>
+</body>
+</html>
