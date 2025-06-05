@@ -1,10 +1,10 @@
-# LN Forge 🔥 - Your AI-Powered Light Novel Idea Lab!
+# LN Forge - Your AI-Powered Light Novel Idea Lab
 
 Yo! Welcome to LN Forge, the ultimate web app for brainstorming, outlining, and generating chapters for your next banger Light Novel, all powered by your own story blueprint and some AI magic (Gemini API).
 
 This ain't just a fancy notepad; it's an interactive environment to bring your story to life, from a spark of an idea to full-blown chapters.
 
-## Wtf is this thing? 🤨
+## Wtf is this thing? 
 
 LN Forge takes your Light Novel blueprint (a `.md` file you create), uses AI to understand its structure (characters, world, plot, etc.), and then helps you:
 
@@ -16,7 +16,7 @@ LN Forge takes your Light Novel blueprint (a `.md` file you create), uses AI to 
 
 Basically, you drop your master plan, and this app helps you build the damn thing.
 
-## Key Features ✨
+## Key Features 
 
 * **Blueprint-First Design:** The app is a blank slate until you upload your `.md` blueprint.
 * **AI-Powered Blueprint Parsing:** Gemini API reads your blueprint and structures its content to display in dedicated sections (Overview, Characters, World, Plot).
@@ -37,7 +37,7 @@ Basically, you drop your master plan, and this app helps you build the damn thin
     * Option to re-parse the current blueprint with the AI (useful after API key update).
 * **Responsive Design:** Built with Tailwind CSS to look good on different screens.
 
-## How to Use This Bad Boy 🚀
+## How to Use This Bad Boy 
 
 1.  **Get the Code:**
     * If you're just checking out the demo in a special environment (like a shared Canvas), it might just work!
@@ -67,7 +67,7 @@ Basically, you drop your master plan, and this app helps you build the damn thin
     * Head to "LN Chapters" to generate your first chapter!
     * Edit, delete, and keep building your masterpiece.
 
-## Tech Stack 💻
+## Tech Stack 
 
 * **HTML5**
 * **Tailwind CSS** (for styling and responsiveness)
@@ -76,7 +76,7 @@ Basically, you drop your master plan, and this app helps you build the damn thin
 * **Google Gemini API** (for AI blueprint parsing, chapter generation, character whispers)
 * **Firebase Firestore** (for cloud-based storage of your LN chapters)
 
-## Blueprint Parsing & Accuracy 🧐
+## Blueprint Parsing & Accuracy 
 
 The app now uses the Gemini AI to parse your uploaded `.md` blueprint based on a detailed schema (inspired by common LN outlining templates). The goal is to automatically populate the "Overview," "Characters," "World," and "Plot" sections of the app.
 
@@ -89,7 +89,7 @@ The app now uses the Gemini AI to parse your uploaded `.md` blueprint based on a
     * The raw text of your blueprint is *always* used as the primary guide for **chapter generation**, so even if the display sections aren't 100% accurate from the parsing, the chapter writing AI gets the full raw truth.
     * You can always re-upload a revised blueprint or use the "Re-Parse Current Blueprint" button in Settings (especially if you update your API key or think the AI can do better with the current raw file).
 
-## Known Issues & Limitations 😬
+## Known Issues & Limitations 
 
 * **AI Parsing Imperfections:** As mentioned, the AI parsing of the blueprint might not always be 100% perfect for display in the app's sections. The more structured your `.md` file, the better.
 * **Exported Version Dependencies:** Running the exported HTML file requires you to set up your own Gemini API Key and Firebase project for full functionality (AI features and chapter saving).
@@ -97,13 +97,13 @@ The app now uses the Gemini AI to parse your uploaded `.md` blueprint based on a
 * **Large Blueprint/Chapter Context:** Sending very large blueprints or many long previous chapters to the AI for chapter generation could hit API limits or slow down generation. The AI will try its best, but super long contexts can be challenging.
 * **Theme:** The visual theme is currently fixed (dark mode with yellow accents). It doesn't dynamically change based on the blueprint content.
 
-## Future Ideas? 💡 (Maybe... if you're feelin' it)
+## Future Ideas? (Maybe... if you're feelin it)
 
 * More advanced blueprint parsing error handling/feedback.
 * Local chapter import/export.
 * Deeper theme customization.
 * ...your awesome ideas!
 
-## Peace Out 🤘
+## Peace Out 
 
 Hope this LN Forge helps you cook up some fire stories! If you dig it, give it a star!
